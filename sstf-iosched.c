@@ -22,20 +22,33 @@ static void sstf_merged_requests(struct request_queue *q, struct request *rq,
 	list_del_init(&next->queuelist);
 }
 
+long long unsigned lastPos = 0;
 /* Esta função despacha o próximo bloco a ser lido. */
 static int sstf_dispatch(struct request_queue *q, int force){
 	struct sstf_data *nd = q->elevator->elevator_data;
 	char direction = 'R';
 	struct request *rq;
+	struct list_head *pos;
+	struct request *closest;
+	long long unsigned distance;
 
 	/* Aqui deve-se retirar uma requisição da fila e enviá-la para processamento.
 	 * Use como exemplo o driver noop-iosched.c. Veja como a requisição é tratada.
 	 *
 	 * Antes de retornar da função, imprima o sector que foi atendido.
 	 */
-
+	
 	rq = list_first_entry_or_null(&nd->queue, struct request, queuelist);
-	if (rq) {
+	distance = abs(blk_rq_pos(rq) - lastPos)
+	if (rq) {			
+		list_for_each(pos, &nd->queue){	
+			distance = blk_rq_pos(list_first_entry_or_null(pos, struct request, queuelist));
+			if(distance < lastPos){
+				lastPos = distance;
+				closest = list_first_entry_or_null(pos, struct request, queuelist);
+				rq = closest;
+			}	
+		}
 		list_del_init(&rq->queuelist);
 		elv_dispatch_sort(q, rq);
 		printk(KERN_EMERG "[SSTF] dsp %c %llu\n", direction, blk_rq_pos(rq));
